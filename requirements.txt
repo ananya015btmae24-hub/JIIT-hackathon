@@ -1,5 +1,6 @@
 flask
 requests
-cloudinary
 python-dotenv
 gunicorn
+pillow
+opencv-python-headless
