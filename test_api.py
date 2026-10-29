@@ -5,7 +5,7 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv()
-BASE = f"http://127.0.0.1:{os.getenv('PORT', 5000)}"
+BASE = "https://jiit-hackathon.onrender.com"  # your Render link, in quotes, no trailing slash
 HEADERS = {"X-API-Key": os.getenv("CUSTOM_API_KEY", "")}
 
 if len(sys.argv) < 2 or not os.path.isfile(sys.argv[1]):

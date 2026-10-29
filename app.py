@@ -7,9 +7,9 @@ Gemini looks at the photo (or a frame of the video) and writes the caption by it
 Run it with ONE command:  python app.py
 
 Route (needs header  X-API-Key: <CUSTOM_API_KEY>):
-  POST /api/post   multipart form:  file=<photo or video>        (caption=<text> is optional)
+  POST /api/post   multipart form:  file=<photo or video>
   POST /api/post   JSON: {"image_url": "https://...jpg"}  or  {"video_url": "https://...mp4"}
-  Leave the caption out and Gemini writes one.
+  Captions are always written by Gemini; there is nothing to type (a "caption" sent in is ignored).
 
 Instagram downloads the media itself, so this server must be reachable from the internet:
 put its public address in .env as PUBLIC_BASE_URL (e.g. your ngrok / cloudflared / hosting link).
@@ -204,9 +204,9 @@ def delete_files(names):
 post_lock = threading.Lock()  # one post at a time
 
 
-def publish(upload_path, kind, caption=""):
+def publish(upload_path, kind):
     """upload_path: the received file in MEDIA_DIR. kind: 'image' or 'video'.
-    No caption given -> Gemini writes it. Returns (instagram_post_id, caption)."""
+    Gemini writes the caption from the photo / a frame of the video. Returns (instagram_post_id, caption)."""
     token = uuid.uuid4().hex
     names = []
     try:
@@ -220,7 +220,7 @@ def publish(upload_path, kind, caption=""):
             names = [post_name]
             prepare_image(upload_path, os.path.join(MEDIA_DIR, post_name))
         with post_lock:
-            caption = caption or generate_caption(media_url(look_name))
+            caption = generate_caption(media_url(look_name))
             post_id = post_to_instagram(media_url(post_name), caption, kind)
         return post_id, caption
     finally:  # the files only exist so Instagram can download them
@@ -262,9 +262,9 @@ def api_post():
     path = None
     try:
         path, kind = receive_upload()
-        caption = request.form.get("caption") or (request.get_json(silent=True) or {}).get("caption", "")
-        post_id, caption = publish(path, kind, caption)
-        return {"ok": True, "type": kind, "instagram_post_id": post_id, "caption": caption}
+        post_id, caption = publish(path, kind)
+        return {"ok": True, "type": kind, "instagram_post_id": post_id, "caption": caption,
+                "caption_by_gemini": caption != fallback_caption()}  # False = Gemini failed, simple caption used
     except ValueError as e:
         return {"ok": False, "error": str(e)}, 400
     except Exception as e:
